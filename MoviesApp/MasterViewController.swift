@@ -13,7 +13,7 @@ class MasterViewController: UITableViewController {
     static let baseURL = "https://api.themoviedb.org/3/search/movie"
     static let apiKey = "ebfb93b3fd098d680cbfcc2d2ca5b900"
     static let pageSize = 20
-
+    
     @IBOutlet weak var bottomLoadIndicator: UIActivityIndicatorView!
     
     let searchController = UISearchController(searchResultsController: nil)
@@ -35,7 +35,7 @@ class MasterViewController: UITableViewController {
         tableView.tableHeaderView = searchController.searchBar
         bottomLoadIndicator.stopAnimating()
     }
-
+    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "Movies"
@@ -45,12 +45,12 @@ class MasterViewController: UITableViewController {
         super.viewWillDisappear(animated)
         searchController.searchBar.endEditing(true)
     }
-
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-
+    
     // MARK: - Segues
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -63,20 +63,20 @@ class MasterViewController: UITableViewController {
         }
     }
     
-
+    
     // MARK: - Table View Data Source
-
+    
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if searchController.isActive && searchController.searchBar.text != "" {
             return filteredObjects.count
         }
         return 0
     }
-
+    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "MovieCell", for: indexPath)
         let object:Movie
@@ -97,15 +97,12 @@ class MasterViewController: UITableViewController {
                 refreshControl?.endRefreshing()
             }
         }
-        
     }
     
     // MARK: - Service Call
     
     func filterContentForSearchText(_ searchText:String, bottom:Bool = false) {
-        
         let nextPage = currentPage + 1
-
         let parameters:[String:Any] = ["api_key":MasterViewController.apiKey, "query":searchText, "page":nextPage]
         
         Alamofire.request(MasterViewController.baseURL, method: .get, parameters: parameters, encoding: URLEncoding.queryString, headers: nil).validate(statusCode: 200..<500).responseJSON { response in
@@ -125,41 +122,37 @@ class MasterViewController: UITableViewController {
                         self.tableView.reloadData()
                     }
                 }
-                if bottom {
-                    self.bottomLoadIndicator.stopAnimating()
-                }
                 
             case .failure(let error):
                 print(error)
-                if bottom {
-                    self.bottomLoadIndicator.stopAnimating()
-                }
+            }
+            
+            if bottom {
+                self.bottomLoadIndicator.stopAnimating()
             }
         }
     }
     
     // MARK: - TableView Bottom Refresh
     override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-            //If we reach the end of the table.
-            if ((scrollView.contentOffset.y + scrollView.frame.size.height - scrollView.contentInset.bottom) >= scrollView.contentSize.height+100)
-            {
-                bottomLoadIndicator.startAnimating()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.loadMore(fromBottom: true)
-                }
+        //If we reach the end of the table.
+        if ((scrollView.contentOffset.y + scrollView.frame.size.height - scrollView.contentInset.bottom) >= scrollView.contentSize.height+50)
+        {
+            bottomLoadIndicator.startAnimating()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.loadMore(fromBottom: true)
             }
+        }
     }
     
-    
 }
-
 
 // MARK: - Protocol Extensions
 
 extension MasterViewController: UISearchResultsUpdating {
-    
-    public func updateSearchResults(for searchController: UISearchController) {
+    func updateSearchResults(for searchController: UISearchController) {
         if searchController.searchBar.text != "" {
+            self.filteredObjects.removeAll()
             filterContentForSearchText(searchController.searchBar.text!)
         } else {
             self.filteredObjects.removeAll()
