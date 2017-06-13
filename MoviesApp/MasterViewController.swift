@@ -14,6 +14,8 @@ class MasterViewController: UITableViewController {
     static let apiKey = "ebfb93b3fd098d680cbfcc2d2ca5b900"
     static let pageSize = 20
 
+    @IBOutlet weak var bottomLoadIndicator: UIActivityIndicatorView!
+    
     let searchController = UISearchController(searchResultsController: nil)
     var detailViewController: DetailViewController? = nil
     var filteredObjects = [Movie]()
@@ -31,6 +33,7 @@ class MasterViewController: UITableViewController {
         searchController.dimsBackgroundDuringPresentation = false
         definesPresentationContext = true
         tableView.tableHeaderView = searchController.searchBar
+        bottomLoadIndicator.stopAnimating()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -59,6 +62,7 @@ class MasterViewController: UITableViewController {
             }
         }
     }
+    
 
     // MARK: - Table View Data Source
 
@@ -85,17 +89,20 @@ class MasterViewController: UITableViewController {
     
     // MARK: - Custom Functions
     
-    func loadMore() {
+    func loadMore(fromBottom bottom:Bool) {
         if searchController.isActive && searchController.searchBar.text != "" {
-            filterContentForSearchText(searchController.searchBar.text!)
+            filterContentForSearchText(searchController.searchBar.text!, bottom: bottom)
             tableView.reloadData()
-            refreshControl?.endRefreshing()
+            if !bottom {
+                refreshControl?.endRefreshing()
+            }
         }
+        
     }
     
     // MARK: - Service Call
     
-    func filterContentForSearchText(_ searchText:String) {
+    func filterContentForSearchText(_ searchText:String, bottom:Bool = false) {
         
         let nextPage = currentPage + 1
 
@@ -107,28 +114,57 @@ class MasterViewController: UITableViewController {
                 if let dic = response.result.value as? [String: Any], let results = dic["results"] as? [[String: Any]]  {
                     for movie in results {
                         let m = Movie(movieId: movie["id"] as! Int, movieTitle: movie["title"] as! String)
-                        self.filteredObjects.insert(m, at: 0)
+                        if bottom {
+                            self.filteredObjects.append(m)
+                        } else {
+                            self.filteredObjects.insert(m, at: 0)
+                        }
                     }
                     
                     DispatchQueue.main.async {
                         self.tableView.reloadData()
                     }
                 }
+                if bottom {
+                    self.bottomLoadIndicator.stopAnimating()
+                }
                 
             case .failure(let error):
                 print(error)
+                if bottom {
+                    self.bottomLoadIndicator.stopAnimating()
+                }
             }
         }
     }
     
+    // MARK: - TableView Bottom Refresh
+    override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            //If we reach the end of the table.
+            if ((scrollView.contentOffset.y + scrollView.frame.size.height - scrollView.contentInset.bottom) >= scrollView.contentSize.height+100)
+            {
+                bottomLoadIndicator.startAnimating()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.loadMore(fromBottom: true)
+                }
+            }
+    }
+    
+    
 }
+
 
 // MARK: - Protocol Extensions
 
 extension MasterViewController: UISearchResultsUpdating {
     
     public func updateSearchResults(for searchController: UISearchController) {
-        filterContentForSearchText(searchController.searchBar.text!)
+        if searchController.searchBar.text != "" {
+            filterContentForSearchText(searchController.searchBar.text!)
+        } else {
+            self.filteredObjects.removeAll()
+            tableView.reloadData()
+        }
     }
 }
 
