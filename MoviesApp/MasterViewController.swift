@@ -101,7 +101,7 @@ class MasterViewController: UITableViewController {
 
         let parameters:[String:Any] = ["api_key":MasterViewController.apiKey, "query":searchText, "page":nextPage]
         
-        Alamofire.request(MasterViewController.baseURL, method: .get, parameters: parameters, encoding: URLEncoding.queryString, headers: nil).validate().responseJSON { response in
+        Alamofire.request(MasterViewController.baseURL, method: .get, parameters: parameters, encoding: URLEncoding.queryString, headers: nil).validate(statusCode: 200..<500).responseJSON { response in
             switch response.result {
             case .success:
                 if let dic = response.result.value as? [String: Any], let results = dic["results"] as? [[String: Any]]  {
